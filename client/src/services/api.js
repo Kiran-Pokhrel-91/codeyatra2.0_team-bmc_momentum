@@ -56,11 +56,11 @@ async function handleSSEStream(response, onChunk, onComplete, onError) {
 // Goal Discussion API
 export const goalApi = {
   // Start or continue a goal discussion with AI (SSE streaming)
-  async discuss({ goal, conversationHistory = [], userMessage }, onChunk) {
+  async discuss({ goal, conversationHistory = [], userMessage, enableThinking = true }, onChunk) {
     const response = await fetch(`${API_BASE}/goals/discuss`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ goal, conversationHistory, userMessage }),
+      body: JSON.stringify({ goal, conversationHistory, userMessage, enableThinking }),
     });
     
     if (!response.ok) {
@@ -102,11 +102,11 @@ export const goalApi = {
 // Daily Planning API
 export const planningApi = {
   // Get AI suggestions for tomorrow's tasks (SSE streaming)
-  async suggest({ goals, existingTasks, userPreferences, conversationHistory = [] }, onChunk) {
+  async suggest({ goals, existingTasks, userPreferences, conversationHistory = [], enableThinking = true }, onChunk) {
     const response = await fetch(`${API_BASE}/planning/suggest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ goals, existingTasks, userPreferences, conversationHistory }),
+      body: JSON.stringify({ goals, existingTasks, userPreferences, conversationHistory, enableThinking }),
     });
     
     if (!response.ok) {
@@ -130,11 +130,11 @@ export const planningApi = {
   },
 
   // Tweak time allocation (SSE streaming)
-  async tweak({ currentPlan, userRequest, conversationHistory = [] }, onChunk) {
+  async tweak({ currentPlan, userRequest, conversationHistory = [], enableThinking = false }, onChunk) {
     const response = await fetch(`${API_BASE}/planning/tweak`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPlan, userRequest, conversationHistory }),
+      body: JSON.stringify({ currentPlan, userRequest, conversationHistory, enableThinking }),
     });
     
     if (!response.ok) {

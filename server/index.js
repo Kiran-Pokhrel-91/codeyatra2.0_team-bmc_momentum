@@ -192,7 +192,7 @@ app.get('/api/health', async (req, res) => {
 // Supports SSE streaming for real-time responses
 app.post('/api/goals/discuss', async (req, res) => {
   try {
-    const { goal, conversationHistory = [], userMessage } = req.body;
+    const { goal, conversationHistory = [], userMessage, enableThinking = true } = req.body;
 
     if (!goal && !userMessage) {
       return res.status(400).json({ error: 'Goal or user message is required' });
@@ -225,8 +225,8 @@ Format your subgoal suggestions clearly when providing them:
       messages.push({ role: 'user', content: userMessage });
     }
 
-    // Use SSE streaming with thinking enabled for complex reasoning
-    await streamChatWithOllama(res, messages, systemPrompt, true);
+    // Use SSE streaming with thinking mode controlled by client
+    await streamChatWithOllama(res, messages, systemPrompt, enableThinking);
   } catch (error) {
     console.error('Error in goal discussion:', error);
     // Only send error if headers haven't been sent yet
@@ -298,7 +298,7 @@ Consider the user's feedback and preferences from the conversation when finalizi
 // Supports SSE streaming for real-time responses
 app.post('/api/planning/suggest', async (req, res) => {
   try {
-    const { goals, existingTasks, userPreferences, conversationHistory = [] } = req.body;
+    const { goals, existingTasks, userPreferences, conversationHistory = [], enableThinking = true } = req.body;
 
     if (!goals || goals.length === 0) {
       return res.status(400).json({ error: 'Goals are required for planning' });
@@ -341,8 +341,8 @@ Format your suggestions clearly with estimated time for each task.`;
       messages.push({ role: 'user', content: userContent });
     }
 
-    // Use SSE streaming with thinking enabled for complex reasoning
-    await streamChatWithOllama(res, messages, systemPrompt, true);
+    // Use SSE streaming with thinking mode controlled by client
+    await streamChatWithOllama(res, messages, systemPrompt, enableThinking);
   } catch (error) {
     console.error('Error in daily planning:', error);
     if (!res.headersSent) {
@@ -355,7 +355,7 @@ Format your suggestions clearly with estimated time for each task.`;
 // Supports SSE streaming for real-time responses
 app.post('/api/planning/tweak', async (req, res) => {
   try {
-    const { currentPlan, userRequest, conversationHistory = [] } = req.body;
+    const { currentPlan, userRequest, conversationHistory = [], enableThinking = false } = req.body;
 
     if (!currentPlan || !userRequest) {
       return res.status(400).json({ error: 'Current plan and user request are required' });
@@ -379,8 +379,8 @@ Provide the updated schedule clearly.`;
       { role: 'user', content: userRequest },
     ];
 
-    // Use SSE streaming (no thinking needed for simple tweaks)
-    await streamChatWithOllama(res, messages, systemPrompt, false);
+    // Use SSE streaming with thinking mode controlled by client
+    await streamChatWithOllama(res, messages, systemPrompt, enableThinking);
   } catch (error) {
     console.error('Error tweaking plan:', error);
     if (!res.headersSent) {
