@@ -46,7 +46,7 @@ const Goals = () => {
       setError(err.message)
       setChatMessages([
         userMessage,
-        { role: 'assistant', content: `Sorry, I encountered an error: ${err.message}. Please make sure the server is running.` }
+        { role: 'error', content: `Sorry, I encountered an error: ${err.message}. Please make sure the server is running.` }
       ])
       setStreamingContent('')
     } finally {
@@ -83,7 +83,7 @@ const Goals = () => {
       setError(err.message)
       setChatMessages([
         ...newMessages,
-        { role: 'assistant', content: `Sorry, I encountered an error: ${err.message}` }
+        { role: 'error', content: `Sorry, I encountered an error: ${err.message}` }
       ])
       setStreamingContent('')
     } finally {
