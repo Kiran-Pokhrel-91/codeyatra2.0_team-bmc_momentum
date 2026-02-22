@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
+import { Ollama } from 'ollama';
 
 dotenv.config();
 
@@ -12,50 +12,171 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Google AI configuration
-const GOOGLE_AI_API_KEY = process.env.GOOGLE_AI_API_KEY;
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+// Ollama configuration
+const OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
+const MODEL = process.env.OLLAMA_MODEL || 'qwen3:4b';
 
-if (!GOOGLE_AI_API_KEY) {
-  console.error('ERROR: GOOGLE_AI_API_KEY is required. Get one at https://aistudio.google.com/apikey');
-  process.exit(1);
+const ollama = new Ollama({ host: OLLAMA_URL });
+
+console.log(`Using Ollama model: ${MODEL} at ${OLLAMA_URL}`);
+
+// Helper function to strip thinking tags from qwen3 responses
+function stripThinking(text) {
+  if (!text) return '';
+  // Remove everything before and including </think> tag
+  const thinkEndTag = '</think>';
+  const idx = text.indexOf(thinkEndTag);
+  if (idx !== -1) {
+    return text.slice(idx + thinkEndTag.length).trim();
+  }
+  return text;
 }
 
-const ai = new GoogleGenAI({ apiKey: GOOGLE_AI_API_KEY });
+// Helper function to chat with Ollama (non-streaming, for JSON extraction)
+async function chatWithOllama(messages, systemPrompt = '', enableThinking = false) {
+  const ollamaMessages = [];
 
-console.log(`Using Google AI model: ${MODEL}`);
+  // Add system prompt if provided
+  // For qwen3 models, add /no_think to disable thinking when not needed
+  let finalSystemPrompt = systemPrompt;
+  if (!enableThinking && systemPrompt) {
+    finalSystemPrompt = systemPrompt + '\n\n/no_think';
+  }
 
-// Helper function to chat with Gemini
-async function chatWithGemini(messages, systemPrompt = '') {
-  // Build contents array for the new SDK format
-  const contents = messages.map(msg => ({
-    role: msg.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: msg.content }]
-  }));
+  if (finalSystemPrompt) {
+    ollamaMessages.push({ role: 'system', content: finalSystemPrompt });
+  }
 
-  const response = await ai.models.generateContent({
+  // Convert messages to Ollama format
+  for (const msg of messages) {
+    ollamaMessages.push({
+      role: msg.role,
+      content: msg.content
+    });
+  }
+
+  const response = await ollama.chat({
     model: MODEL,
-    contents,
-    config: {
-      systemInstruction: systemPrompt || undefined
-    }
+    messages: ollamaMessages,
+    stream: false
   });
 
-  return response.text;
+  // Strip thinking from response if present
+  let content = response.message.content;
+  if (!enableThinking) {
+    content = stripThinking(content);
+  }
+
+  return content;
+}
+
+// Helper function to stream chat with Ollama via SSE
+async function streamChatWithOllama(res, messages, systemPrompt = '', enableThinking = false) {
+  const ollamaMessages = [];
+
+  // Add system prompt if provided
+  // For qwen3 models, add /no_think to disable thinking when not needed
+  let finalSystemPrompt = systemPrompt;
+  if (!enableThinking && systemPrompt) {
+    finalSystemPrompt = systemPrompt + '\n\n/no_think';
+  }
+
+  if (finalSystemPrompt) {
+    ollamaMessages.push({ role: 'system', content: finalSystemPrompt });
+  }
+
+  // Convert messages to Ollama format
+  for (const msg of messages) {
+    ollamaMessages.push({
+      role: msg.role,
+      content: msg.content
+    });
+  }
+
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  let fullContent = '';
+  let isInThinking = false;
+  let thinkBuffer = '';
+
+  try {
+    const response = await ollama.chat({
+      model: MODEL,
+      messages: ollamaMessages,
+      stream: true
+    });
+
+    for await (const part of response) {
+      let chunk = part.message.content;
+      
+      // Handle thinking mode - only stream actual content, not thinking
+      if (!enableThinking) {
+        // Buffer content until we're past any thinking tags
+        thinkBuffer += chunk;
+        const thinkEndTag = '</think>';
+        const idx = thinkBuffer.indexOf(thinkEndTag);
+        if (idx !== -1) {
+          // Found end of thinking, start streaming from here
+          chunk = thinkBuffer.slice(idx + thinkEndTag.length);
+          thinkBuffer = '';
+          isInThinking = false;
+        } else if (thinkBuffer.length < 1000) {
+          // Still potentially in thinking phase, buffer more
+          continue;
+        } else {
+          // No thinking tag found, probably not a thinking response
+          chunk = thinkBuffer;
+          thinkBuffer = '';
+        }
+      }
+      
+      if (chunk) {
+        fullContent += chunk;
+        res.write(`data: ${JSON.stringify({ chunk, done: false })}\n\n`);
+      }
+    }
+
+    // Flush any remaining buffer
+    if (thinkBuffer) {
+      const stripped = stripThinking(thinkBuffer);
+      if (stripped) {
+        fullContent += stripped;
+        res.write(`data: ${JSON.stringify({ chunk: stripped, done: false })}\n\n`);
+      }
+    }
+
+    res.write(`data: ${JSON.stringify({ chunk: '', done: true, fullContent: fullContent.trim(), role: 'assistant' })}\n\n`);
+    res.end();
+  } catch (error) {
+    res.write(`data: ${JSON.stringify({ error: error.message, done: true })}\n\n`);
+    res.end();
+  }
 }
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
   try {
-    const response = await ai.models.generateContent({
+    const response = await ollama.chat({
       model: MODEL,
-      contents: 'Say "OK" if you are working.'
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant. Respond briefly. /no_think' },
+        { role: 'user', content: 'Say "OK" if you are working.' }
+      ],
+      stream: false
     });
+    
+    let content = response.message.content;
+    // Strip any thinking tags
+    content = stripThinking(content);
+    
     res.json({ 
       status: 'ok', 
       model: MODEL, 
-      provider: 'Google AI (Gemini)',
-      test: response.text 
+      provider: 'Ollama (Local)',
+      test: content 
     });
   } catch (error) {
     res.json({ status: 'error', model: MODEL, error: error.message });
@@ -63,6 +184,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Goal Discussion endpoint - AI discusses a goal with the user and suggests subgoals
+// Uses SSE streaming + thinking mode for better reasoning
 app.post('/api/goals/discuss', async (req, res) => {
   try {
     const { goal, conversationHistory = [], userMessage } = req.body;
@@ -98,19 +220,18 @@ Format your subgoal suggestions clearly when providing them:
       messages.push({ role: 'user', content: userMessage });
     }
 
-    const content = await chatWithGemini(messages, systemPrompt);
-
-    res.json({
-      message: content,
-      role: 'assistant',
-    });
+    // Stream response with thinking enabled for better reasoning
+    await streamChatWithOllama(res, messages, systemPrompt, true);
   } catch (error) {
     console.error('Error in goal discussion:', error);
-    res.status(500).json({ error: 'Failed to process goal discussion', details: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to process goal discussion', details: error.message });
+    }
   }
 });
 
 // Extract subgoals from conversation
+// Uses non-streaming + thinking mode for accurate JSON extraction
 app.post('/api/goals/extract-subgoals', async (req, res) => {
   try {
     const { goal, conversationHistory } = req.body;
@@ -141,7 +262,8 @@ Consider the user's feedback and preferences from the conversation when finalizi
       },
     ];
 
-    const content = await chatWithGemini(messages, systemPrompt);
+    // Non-streaming with thinking for accurate extraction
+    const content = await chatWithOllama(messages, systemPrompt, true);
 
     // Try to parse the JSON response
     let subgoals;
@@ -167,6 +289,7 @@ Consider the user's feedback and preferences from the conversation when finalizi
 });
 
 // Daily Planning endpoint - AI suggests tasks for tomorrow
+// Uses SSE streaming + thinking mode for complex scheduling
 app.post('/api/planning/suggest', async (req, res) => {
   try {
     const { goals, existingTasks, userPreferences, conversationHistory = [] } = req.body;
@@ -212,19 +335,18 @@ Format your suggestions clearly with estimated time for each task.`;
       messages.push({ role: 'user', content: userContent });
     }
 
-    const content = await chatWithGemini(messages, systemPrompt);
-
-    res.json({
-      message: content,
-      role: 'assistant',
-    });
+    // Stream response with thinking enabled for complex planning
+    await streamChatWithOllama(res, messages, systemPrompt, true);
   } catch (error) {
     console.error('Error in daily planning:', error);
-    res.status(500).json({ error: 'Failed to generate daily plan', details: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to generate daily plan', details: error.message });
+    }
   }
 });
 
 // Tweak time allocation
+// Uses SSE streaming, no thinking (simple modifications)
 app.post('/api/planning/tweak', async (req, res) => {
   try {
     const { currentPlan, userRequest, conversationHistory = [] } = req.body;
@@ -251,19 +373,18 @@ Provide the updated schedule clearly.`;
       { role: 'user', content: userRequest },
     ];
 
-    const content = await chatWithGemini(messages, systemPrompt);
-
-    res.json({
-      message: content,
-      role: 'assistant',
-    });
+    // Stream response, no thinking needed for simple tweaks
+    await streamChatWithOllama(res, messages, systemPrompt, false);
   } catch (error) {
     console.error('Error tweaking plan:', error);
-    res.status(500).json({ error: 'Failed to tweak plan', details: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to tweak plan', details: error.message });
+    }
   }
 });
 
 // Extract final daily schedule as JSON
+// Uses non-streaming + thinking for accurate JSON extraction
 app.post('/api/planning/finalize', async (req, res) => {
   try {
     const { conversationHistory } = req.body;
@@ -295,7 +416,8 @@ Order tasks by time. Include breaks if they were discussed.`;
       },
     ];
 
-    const content = await chatWithGemini(messages, systemPrompt);
+    // Non-streaming with thinking for accurate extraction
+    const content = await chatWithOllama(messages, systemPrompt, true);
 
     // Try to parse the JSON response
     let schedule;
@@ -322,5 +444,5 @@ Order tasks by time. Include breaks if they were discussed.`;
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Using Google AI (Gemini) with model: ${MODEL}`);
+  console.log(`Using Ollama (Local) with model: ${MODEL}`);
 });
