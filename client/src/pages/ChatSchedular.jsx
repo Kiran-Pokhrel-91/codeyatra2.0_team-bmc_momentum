@@ -110,7 +110,7 @@ const ChatSchedular = () => {
       setError(err.message)
       setMessages([
         {
-          role: 'assistant',
+          role: 'error',
           content: `Good morning! I'd love to help you plan your day, but I'm having trouble connecting to the AI service. Please make sure the server is running.\n\nError: ${err.message}`
         }
       ])
@@ -204,7 +204,7 @@ const ChatSchedular = () => {
       setMessages([
         ...newMessages,
         {
-          role: 'assistant',
+          role: 'error',
           content: `I encountered an issue: ${err.message}. Let me try to help you differently. What would you like to adjust in your schedule?`
         }
       ])
@@ -317,21 +317,42 @@ const ChatSchedular = () => {
             <div key={index}>
               <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`flex gap-3 max-w-[75%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                  {message.role === 'assistant' && (
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm shadow-indigo-200" aria-hidden="true">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
+                  {(message.role === 'assistant' || message.role === 'error') && (
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${
+                      message.role === 'error'
+                        ? 'bg-gradient-to-br from-red-500 to-rose-600 shadow-red-200'
+                        : 'bg-gradient-to-br from-indigo-500 to-purple-600 shadow-indigo-200'
+                    }`} aria-hidden="true">
+                      {message.role === 'error' ? (
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      )}
                     </div>
                   )}
                   <div>
-                    <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-line ${
-                      message.role === 'assistant'
-                        ? 'bg-gray-50 border border-gray-100 text-gray-700 rounded-tl-md'
-                        : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-md shadow-md shadow-indigo-200'
-                    }`}>
-                      {message.content}
-                    </div>
+                    {message.role === 'error' ? (
+                      <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-gradient-to-br from-red-50 to-rose-50 border border-red-200 shadow-sm">
+                        <div className="flex items-start gap-2">
+                          <svg className="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <p className="text-sm leading-relaxed text-red-700 font-medium whitespace-pre-line">{message.content}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-line ${
+                        message.role === 'assistant'
+                          ? 'bg-gray-50 border border-gray-100 text-gray-700 rounded-tl-md'
+                          : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-md shadow-md shadow-indigo-200'
+                      }`}>
+                        {message.content}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
