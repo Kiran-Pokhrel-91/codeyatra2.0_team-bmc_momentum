@@ -7,7 +7,8 @@ const AIChat = ({
   placeholder = "Type your message...",
   quickActions = [],
   title = "AI Assistant",
-  subtitle = "Ready to help"
+  subtitle = "Ready to help",
+  streamingContent = ''
 }) => {
   const [input, setInput] = useState('')
   const messagesEndRef = useRef(null)
@@ -95,8 +96,27 @@ const AIChat = ({
           </div>
         ))}
 
-        {/* Typing indicator */}
-        {isLoading && (
+        {/* Streaming content - show AI response as it arrives */}
+        {isLoading && streamingContent && (
+          <div className="flex justify-start">
+            <div className="flex gap-3 max-w-[85%]">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm shadow-indigo-200">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div>
+                <div className="px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-line bg-gray-50 border border-gray-100 text-gray-700 rounded-tl-md">
+                  {streamingContent}
+                  <span className="inline-block w-2 h-4 bg-indigo-500 ml-0.5 animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Typing indicator - only show when loading but no content yet */}
+        {isLoading && !streamingContent && (
           <div className="flex justify-start">
             <div className="flex gap-3 max-w-[85%]">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm shadow-indigo-200">

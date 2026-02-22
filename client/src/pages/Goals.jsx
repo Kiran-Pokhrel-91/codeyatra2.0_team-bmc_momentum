@@ -10,6 +10,7 @@ const Goals = () => {
   const [chatMessages, setChatMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [streamingContent, setStreamingContent] = useState('')
 
   // Start AI discussion when user enters a goal
   const startGoalDiscussion = async () => {
@@ -19,18 +20,34 @@ const Goals = () => {
     setIsLoading(true)
     setError(null)
     setChatMessages([])
+    setStreamingContent('')
+
+    // Add user message immediately
+    const userMessage = { 
+      role: 'user', 
+      content: `I want to achieve this goal: "${objective}". Can you help me break it down into manageable subgoals?` 
+    }
+    setChatMessages([userMessage])
 
     try {
-      const response = await goalApi.discuss({ goal: objective, conversationHistory: [] })
-      setChatMessages([
-        { role: 'user', content: `I want to achieve this goal: "${objective}". Can you help me break it down into manageable subgoals?` },
-        { role: 'assistant', content: response.message }
-      ])
+      const response = await goalApi.discuss(
+        { goal: objective, conversationHistory: [] },
+        // Streaming callback - receives each chunk of text
+        (chunk, fullContent) => {
+          setStreamingContent(fullContent)
+        }
+      )
+      
+      // Once complete, add the full message to chat history
+      setChatMessages([userMessage, { role: 'assistant', content: response.message }])
+      setStreamingContent('')
     } catch (err) {
       setError(err.message)
       setChatMessages([
+        userMessage,
         { role: 'assistant', content: `Sorry, I encountered an error: ${err.message}. Please make sure the server is running.` }
       ])
+      setStreamingContent('')
     } finally {
       setIsLoading(false)
     }
@@ -42,20 +59,31 @@ const Goals = () => {
     setChatMessages(newMessages)
     setIsLoading(true)
     setError(null)
+    setStreamingContent('')
 
     try {
-      const response = await goalApi.discuss({
-        goal: objective,
-        conversationHistory: newMessages,
-        userMessage: message
-      })
+      const response = await goalApi.discuss(
+        {
+          goal: objective,
+          conversationHistory: newMessages,
+          userMessage: message
+        },
+        // Streaming callback
+        (chunk, fullContent) => {
+          setStreamingContent(fullContent)
+        }
+      )
+      
+      // Once complete, add the full message to chat history
       setChatMessages([...newMessages, { role: 'assistant', content: response.message }])
+      setStreamingContent('')
     } catch (err) {
       setError(err.message)
       setChatMessages([
         ...newMessages,
         { role: 'assistant', content: `Sorry, I encountered an error: ${err.message}` }
       ])
+      setStreamingContent('')
     } finally {
       setIsLoading(false)
     }
@@ -383,6 +411,7 @@ const Goals = () => {
               quickActions={quickActions}
               title="Goal Coach"
               subtitle="Helping you plan"
+              streamingContent={streamingContent}
             />
           </div>
         </div>

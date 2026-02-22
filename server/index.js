@@ -70,6 +70,97 @@ async function chatWithOllama(messages, systemPrompt = '', enableThinking = fals
   return content;
 }
 
+// Helper function to stream chat responses via SSE
+async function streamChatWithOllama(res, messages, systemPrompt = '', enableThinking = false) {
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+  res.flushHeaders();
+
+  const ollamaMessages = [];
+
+  // Add system prompt if provided
+  let finalSystemPrompt = systemPrompt;
+  if (!enableThinking && systemPrompt) {
+    finalSystemPrompt = systemPrompt + '\n\n/no_think';
+  }
+
+  if (finalSystemPrompt) {
+    ollamaMessages.push({ role: 'system', content: finalSystemPrompt });
+  }
+
+  // Convert messages to Ollama format
+  for (const msg of messages) {
+    ollamaMessages.push({
+      role: msg.role,
+      content: msg.content
+    });
+  }
+
+  let fullContent = '';
+  let isInsideThinking = false;
+  let thinkingComplete = false;
+
+  try {
+    const stream = await ollama.chat({
+      model: MODEL,
+      messages: ollamaMessages,
+      stream: true
+    });
+
+    for await (const chunk of stream) {
+      const text = chunk.message?.content || '';
+      
+      if (!text) continue;
+      
+      // Handle thinking tags - buffer content until </think> is found
+      if (!thinkingComplete) {
+        fullContent += text;
+        
+        // Check if we're inside or starting a thinking block
+        if (fullContent.includes('<think>') || isInsideThinking) {
+          isInsideThinking = true;
+          
+          // Check if thinking is complete
+          if (fullContent.includes('</think>')) {
+            thinkingComplete = true;
+            // Extract content after </think>
+            const afterThink = fullContent.split('</think>')[1] || '';
+            if (afterThink.trim()) {
+              res.write(`data: ${JSON.stringify({ text: afterThink.trim(), done: false })}\n\n`);
+            }
+            fullContent = afterThink;
+          }
+          // Still inside thinking, don't send anything yet
+          continue;
+        }
+        
+        // No thinking tags, send text directly
+        thinkingComplete = true;
+        res.write(`data: ${JSON.stringify({ text: fullContent, done: false })}\n\n`);
+        continue;
+      }
+      
+      // Normal streaming after thinking is complete
+      fullContent += text;
+      res.write(`data: ${JSON.stringify({ text, done: false })}\n\n`);
+    }
+
+    // Send completion event
+    res.write(`data: ${JSON.stringify({ text: '', done: true, fullContent: stripThinking(fullContent) })}\n\n`);
+    res.end();
+    
+    return stripThinking(fullContent);
+  } catch (error) {
+    console.error('Streaming error:', error);
+    res.write(`data: ${JSON.stringify({ error: error.message, done: true })}\n\n`);
+    res.end();
+    throw error;
+  }
+}
+
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
   try {
@@ -98,6 +189,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Goal Discussion endpoint - AI discusses a goal with the user and suggests subgoals
+// Supports SSE streaming for real-time responses
 app.post('/api/goals/discuss', async (req, res) => {
   try {
     const { goal, conversationHistory = [], userMessage } = req.body;
@@ -133,16 +225,14 @@ Format your subgoal suggestions clearly when providing them:
       messages.push({ role: 'user', content: userMessage });
     }
 
-    // Use non-streaming for frontend compatibility
-    const content = await chatWithOllama(messages, systemPrompt, true);
-
-    res.json({
-      message: content,
-      role: 'assistant',
-    });
+    // Use SSE streaming with thinking enabled for complex reasoning
+    await streamChatWithOllama(res, messages, systemPrompt, true);
   } catch (error) {
     console.error('Error in goal discussion:', error);
-    res.status(500).json({ error: 'Failed to process goal discussion', details: error.message });
+    // Only send error if headers haven't been sent yet
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to process goal discussion', details: error.message });
+    }
   }
 });
 
@@ -205,6 +295,7 @@ Consider the user's feedback and preferences from the conversation when finalizi
 });
 
 // Daily Planning endpoint - AI suggests tasks for tomorrow
+// Supports SSE streaming for real-time responses
 app.post('/api/planning/suggest', async (req, res) => {
   try {
     const { goals, existingTasks, userPreferences, conversationHistory = [] } = req.body;
@@ -250,20 +341,18 @@ Format your suggestions clearly with estimated time for each task.`;
       messages.push({ role: 'user', content: userContent });
     }
 
-    // Use non-streaming for frontend compatibility
-    const content = await chatWithOllama(messages, systemPrompt, true);
-
-    res.json({
-      message: content,
-      role: 'assistant',
-    });
+    // Use SSE streaming with thinking enabled for complex reasoning
+    await streamChatWithOllama(res, messages, systemPrompt, true);
   } catch (error) {
     console.error('Error in daily planning:', error);
-    res.status(500).json({ error: 'Failed to generate daily plan', details: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to generate daily plan', details: error.message });
+    }
   }
 });
 
 // Tweak time allocation
+// Supports SSE streaming for real-time responses
 app.post('/api/planning/tweak', async (req, res) => {
   try {
     const { currentPlan, userRequest, conversationHistory = [] } = req.body;
@@ -290,16 +379,13 @@ Provide the updated schedule clearly.`;
       { role: 'user', content: userRequest },
     ];
 
-    // Use non-streaming for frontend compatibility
-    const content = await chatWithOllama(messages, systemPrompt, false);
-
-    res.json({
-      message: content,
-      role: 'assistant',
-    });
+    // Use SSE streaming (no thinking needed for simple tweaks)
+    await streamChatWithOllama(res, messages, systemPrompt, false);
   } catch (error) {
     console.error('Error tweaking plan:', error);
-    res.status(500).json({ error: 'Failed to tweak plan', details: error.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to tweak plan', details: error.message });
+    }
   }
 });
 

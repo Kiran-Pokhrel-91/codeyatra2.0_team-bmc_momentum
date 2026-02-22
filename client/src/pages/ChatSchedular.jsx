@@ -10,6 +10,7 @@ const ChatSchedular = () => {
   const [error, setError] = useState(null)
   const [totalWorkHours, setTotalWorkHours] = useState(0)
   const [focusBlocks, setFocusBlocks] = useState(0)
+  const [streamingContent, setStreamingContent] = useState('')
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -77,14 +78,21 @@ const ChatSchedular = () => {
   const initializeChat = async () => {
     setIsTyping(true)
     setError(null)
+    setStreamingContent('')
 
     try {
-      const response = await planningApi.suggest({
-        goals,
-        existingTasks: [],
-        userPreferences: null,
-        conversationHistory: []
-      })
+      const response = await planningApi.suggest(
+        {
+          goals,
+          existingTasks: [],
+          userPreferences: null,
+          conversationHistory: []
+        },
+        // Streaming callback
+        (chunk, fullContent) => {
+          setStreamingContent(fullContent)
+        }
+      )
 
       const initialMessages = [
         {
@@ -94,6 +102,7 @@ const ChatSchedular = () => {
       ]
 
       setMessages(initialMessages)
+      setStreamingContent('')
       setIsInitialized(true)
     } catch (err) {
       setError(err.message)
@@ -103,6 +112,7 @@ const ChatSchedular = () => {
           content: `Good morning! I'd love to help you plan your day, but I'm having trouble connecting to the AI service. Please make sure the server is running.\n\nError: ${err.message}`
         }
       ])
+      setStreamingContent('')
       setIsInitialized(true)
     } finally {
       setIsTyping(false)
@@ -118,6 +128,7 @@ const ChatSchedular = () => {
     setInput('')
     setIsTyping(true)
     setError(null)
+    setStreamingContent('')
 
     try {
       // Check if user wants to finalize
@@ -126,7 +137,7 @@ const ChatSchedular = () => {
                          messageText.toLowerCase().includes('confirm')
 
       if (isFinalize && messages.length >= 2) {
-        // Try to extract the schedule
+        // Try to extract the schedule (non-streaming JSON endpoint)
         const response = await planningApi.finalize({ conversationHistory: newMessages })
         
         if (response.schedule && response.schedule.length > 0) {
@@ -154,23 +165,35 @@ const ChatSchedular = () => {
           messageText.toLowerCase().includes('adjust')
         )
 
+        // Streaming callback for both tweak and suggest
+        const onChunk = (chunk, fullContent) => {
+          setStreamingContent(fullContent)
+        }
+
         let response
         if (isTweak) {
-          response = await planningApi.tweak({
-            currentPlan: scheduledTasks,
-            userRequest: messageText,
-            conversationHistory: newMessages.slice(-4) // Last few messages for context
-          })
+          response = await planningApi.tweak(
+            {
+              currentPlan: scheduledTasks,
+              userRequest: messageText,
+              conversationHistory: newMessages.slice(-4) // Last few messages for context
+            },
+            onChunk
+          )
         } else {
-          response = await planningApi.suggest({
-            goals,
-            existingTasks: scheduledTasks,
-            userPreferences: messageText,
-            conversationHistory: newMessages
-          })
+          response = await planningApi.suggest(
+            {
+              goals,
+              existingTasks: scheduledTasks,
+              userPreferences: messageText,
+              conversationHistory: newMessages
+            },
+            onChunk
+          )
         }
 
         setMessages([...newMessages, { role: 'assistant', content: response.message }])
+        setStreamingContent('')
       }
     } catch (err) {
       setError(err.message)
@@ -181,6 +204,7 @@ const ChatSchedular = () => {
           content: `I encountered an issue: ${err.message}. Let me try to help you differently. What would you like to adjust in your schedule?`
         }
       ])
+      setStreamingContent('')
     } finally {
       setIsTyping(false)
     }
@@ -293,8 +317,25 @@ const ChatSchedular = () => {
             </div>
           ))}
 
-          {/* Typing indicator */}
-          {isTyping && (
+          {/* Streaming content - show AI response as it arrives */}
+          {isTyping && streamingContent && (
+            <div className="flex justify-start" role="status" aria-label="AI is responding">
+              <div className="flex gap-3 max-w-[75%]">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm shadow-indigo-200" aria-hidden="true">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <div className="px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl rounded-tl-md text-sm leading-relaxed whitespace-pre-line text-gray-700">
+                  {streamingContent}
+                  <span className="inline-block w-2 h-4 bg-indigo-500 ml-0.5 animate-pulse" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Typing indicator - only show when loading but no content yet */}
+          {isTyping && !streamingContent && (
             <div className="flex justify-start" role="status" aria-label="AI is typing">
               <div className="flex gap-3 max-w-[75%]">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm shadow-indigo-200" aria-hidden="true">
