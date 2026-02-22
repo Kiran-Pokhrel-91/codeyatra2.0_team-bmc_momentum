@@ -52,14 +52,14 @@ const Footer = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Brand */}
           <div className="lg:col-span-1">
-            <Link to="/" className="flex items-center space-x-2 mb-6 group" aria-label="LifeFlow Home">
+            <Link to="/" className="flex items-center space-x-2 mb-6 group" aria-label="MOMENTUM Home">
               <div className="w-10 h-10 bg-linear-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center group-hover:shadow-lg group-hover:shadow-indigo-500/30 transition-all duration-300">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
               <span className="text-xl font-bold bg-linear-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                LifeFlow
+                MOMENTUM
               </span>
             </Link>
             <p className="text-gray-400 mb-6 leading-relaxed text-sm">
@@ -104,7 +104,7 @@ const Footer = () => {
         {/* Bottom */}
         <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-gray-400 text-sm">
-            &copy; {new Date().getFullYear()} LifeFlow. All rights reserved.
+            &copy; {new Date().getFullYear()} MOMENTUM. All rights reserved.
           </p>
           <div className="flex items-center space-x-6">
             <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Privacy</a>

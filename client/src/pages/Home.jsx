@@ -91,7 +91,7 @@ const Home = () => {
             
             {/* Subheading */}
             <p className="text-lg sm:text-xl text-gray-500 max-w-xl mx-auto mb-12 leading-relaxed">
-              LifeFlow helps you organize tasks, track habits, and achieve your goals with a beautiful, 
+              MOMENTUM helps you organize tasks, track habits, and achieve your goals with a beautiful, 
               intuitive interface designed for modern life.
             </p>
             
@@ -134,7 +134,7 @@ const Home = () => {
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-5 py-2 bg-white/80 backdrop-blur-sm border border-indigo-100 rounded-full mb-6 shadow-sm">
-              <span className="text-sm font-semibold text-indigo-600 tracking-wide">Why LifeFlow?</span>
+              <span className="text-sm font-semibold text-indigo-600 tracking-wide">Why MOMENTUM?</span>
             </div>
             <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-5 leading-[1.1] tracking-tight">
               Everything You Need to
@@ -184,7 +184,7 @@ const Home = () => {
                 Ready to Transform Your Life?
               </h2>
               <p className="text-lg text-indigo-100 mb-10 max-w-md mx-auto leading-relaxed">
-                Join thousands of users who have already improved their productivity and well-being with LifeFlow.
+                Join thousands of users who have already improved their productivity and well-being with MOMENTUM.
               </p>
               <button
                 onClick={() => navigate('/dashboard')}
