@@ -1,0 +1,92 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+// Models
+
+/// A high-level objective the user wants to achieve
+model Goal {
+  id          String      @id @default(uuid())
+  title       String
+  description String?
+  targetDate  DateTime?
+  status      GoalStatus  @default(ACTIVE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relations
+  milestones  Milestone[]
+  
+  @@map("goals")
+}
+
+/// A major checkpoint within a goal
+model Milestone {
+  id          String          @id @default(uuid())
+  title       String
+  description String?
+  targetDate  DateTime?
+  orderIndex  Int             @default(0)
+  status      MilestoneStatus @default(PENDING)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  // Relations
+  goalId      String
+  goal        Goal            @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  
+  @@map("milestones")
+}
+
+/// An actionable task within a milestone
+model Task {
+  id              String     @id @default(uuid())
+  title           String
+  description     String?
+  estimatedMins   Int?       @map("estimated_mins")
+  dueDate         DateTime?  @map("due_date")
+  priority        Priority   @default(MEDIUM)
+  status          TaskStatus @default(PENDING)
+  orderIndex      Int        @default(0) @map("order_index")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  
+  // Relations
+  milestoneId     String     @map("milestone_id")
+  milestone       Milestone  @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  
+  @@map("tasks")
+}
