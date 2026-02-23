@@ -1,16 +1,43 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { dailyPlanApi } from '../services/api'
 
 const FocusMode = () => {
   const navigate = useNavigate()
   const [totalSeconds, setTotalSeconds] = useState(25 * 60)
   const [isRunning, setIsRunning] = useState(true)
   const [isPaused, setIsPaused] = useState(false)
+  const [tasks, setTasks] = useState([])
+  const [currentTaskIndex, setCurrentTaskIndex] = useState(0)
+  const [loading, setLoading] = useState(true)
   const intervalRef = useRef(null)
 
   const currentSession = 2
   const totalSessions = 4
   const initialSeconds = 25 * 60
+
+  // Fetch tomorrow's tasks on mount
+  useEffect(() => {
+    const fetchTomorrowTasks = async () => {
+      try {
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        const dateStr = tomorrow.toISOString().split('T')[0]
+        
+        const plan = await dailyPlanApi.getDailyPlan(dateStr)
+        if (plan && plan.tasks && plan.tasks.length > 0) {
+          setTasks(plan.tasks)
+        }
+      } catch (err) {
+        console.error('Error fetching tomorrow tasks:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchTomorrowTasks()
+  }, [])
+
+  const currentTask = tasks[currentTaskIndex] || null
 
   useEffect(() => {
     if (isRunning && !isPaused) {
@@ -98,12 +125,29 @@ const FocusMode = () => {
       <main className="flex-1 flex flex-col items-center justify-center relative z-10 -mt-8">
         {/* Task Info */}
         <div className="text-center mb-10 animate-fade-in">
-          <p className="text-sm text-gray-400 mb-2">
-            Project: Q3 Strategy Roadmap<span className="text-indigo-600 font-medium ml-1">Design Execution</span>
-          </p>
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight max-w-lg">
-            Finalize high-fidelity mockups for Dashboard V2
-          </h1>
+          {loading ? (
+            <p className="text-sm text-gray-400">Loading tasks...</p>
+          ) : currentTask ? (
+            <>
+              <p className="text-sm text-gray-400 mb-2">
+                Task {currentTaskIndex + 1} of {tasks.length}
+              </p>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight max-w-lg">
+                {currentTask.title}
+              </h1>
+              {currentTask.description && (
+                <p className="text-sm text-gray-500 mt-2">{currentTask.description}</p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gray-400 mb-2">No tasks planned for tomorrow</p>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight max-w-lg">
+                Start a focus session
+              </h1>
+              <p className="text-sm text-gray-500 mt-2">Use the Chat Scheduler to plan your tomorrow's tasks</p>
+            </>
+          )}
         </div>
 
         {/* Timer Circle */}
