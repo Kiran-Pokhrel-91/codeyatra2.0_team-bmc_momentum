@@ -1,8 +1,24 @@
-import React from 'react'
+import React, { memo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-const Home = () => {
+const STATS = [
+  { value: '10K+', label: 'Active Users' },
+  { value: '2M+', label: 'Tasks Completed' },
+  { value: '98%', label: 'Satisfaction' },
+  { value: '4.9', label: 'App Rating' },
+]
+
+const HOW_IT_WORKS = [
+  { step: '01', title: 'Set Your Goals', desc: 'Define clear, measurable goals and let AI break them into manageable milestones.' },
+  { step: '02', title: 'Plan Your Day', desc: 'Get personalized daily plans adapted to your energy levels and priorities.' },
+  { step: '03', title: 'Stay Focused', desc: 'Use Focus Mode with Pomodoro timer to work in distraction-free sprints.' },
+  { step: '04', title: 'Track & Grow', desc: 'Analyze your progress, earn achievements, and celebrate your wins.' },
+]
+
+const Home = memo(() => {
   const navigate = useNavigate()
+  const handleNavigateLogin = useCallback(() => navigate('/login'), [navigate])
+
   const features = [
     {
       icon: (
@@ -98,7 +114,7 @@ const Home = () => {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
-                onClick={() => navigate('/login')}
+                onClick={handleNavigateLogin}
                 className="group w-full sm:w-auto px-8 py-4 bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center justify-center gap-3"
               >
                 <span>Get Started Free</span>
@@ -114,6 +130,15 @@ const Home = () => {
               </button>
             </div>
 
+            {/* Stats Bar */}
+            <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-2xl mx-auto">
+              {STATS.map((stat) => (
+                <div key={stat.label} className="text-center">
+                  <p className="text-2xl sm:text-3xl font-extrabold bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{stat.value}</p>
+                  <p className="text-xs sm:text-sm text-gray-400 mt-1 font-medium">{stat.label}</p>
+                </div>
+              ))}
+            </div>
 
             {/* Scroll indicator */}
             <div className="mt-12 animate-bounce">
@@ -166,6 +191,38 @@ const Home = () => {
         </div>
       </section>
 
+      {/* How It Works Section */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-72 h-72 bg-indigo-50/60 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="max-w-5xl mx-auto relative z-10">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-5 py-2 bg-white/80 backdrop-blur-sm border border-indigo-100 rounded-full mb-6 shadow-sm">
+              <span className="text-sm font-semibold text-indigo-600 tracking-wide">How It Works</span>
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-5 leading-[1.1] tracking-tight">
+              Four Steps to
+              <span className="bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"> Peak Productivity</span>
+            </h2>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {HOW_IT_WORKS.map((item, i) => (
+              <div key={item.step} className="relative text-center group">
+                {/* Connecting line */}
+                {i < HOW_IT_WORKS.length - 1 && (
+                  <div className="hidden lg:block absolute top-8 left-[60%] w-[80%] h-px bg-linear-to-r from-indigo-200 to-purple-200 pointer-events-none"></div>
+                )}
+                <div className="w-16 h-16 bg-linear-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-5 text-white font-extrabold text-lg shadow-lg shadow-indigo-200/50 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+                  {item.step}
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
         {/* Background decorations */}
@@ -187,7 +244,7 @@ const Home = () => {
                 Join thousands of users who have already improved their productivity and well-being with MOMENTUM.
               </p>
               <button
-                onClick={() => navigate('/login')}
+                onClick={handleNavigateLogin}
                 className="group px-8 py-4 bg-white text-indigo-600 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 inline-flex items-center gap-3"
               >
                 <span>Start Your Journey Today</span>
@@ -201,6 +258,7 @@ const Home = () => {
       </section>
     </div>
   )
-}
+})
 
+Home.displayName = 'Home'
 export default Home

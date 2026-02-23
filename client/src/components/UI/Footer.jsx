@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import Logo from './Logo'
 
 const footerLinks = {
   Product: [
@@ -52,30 +53,18 @@ const Footer = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Brand */}
           <div className="lg:col-span-1">
-            <div
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="flex items-center space-x-2 mb-6 group cursor-pointer"
-              role="button"
-              aria-label="Scroll to top"
-            >
-              <div className="w-10 h-10 bg-linear-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center group-hover:shadow-lg group-hover:shadow-indigo-500/30 transition-all duration-300">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <span className="text-xl font-bold bg-linear-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                MOMENTUM
-              </span>
+            <div className="mb-6">
+              <Logo variant="dark" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
             </div>
             <p className="text-gray-400 mb-6 leading-relaxed text-sm">
               Your personal productivity companion. Transform your daily routine and achieve your goals with AI-powered insights.
             </p>
-            <div className="flex space-x-3">
+            <div className="flex gap-3">
               {socialLinks.map((social) => (
                 <a
                   key={social.label}
                   href={social.href}
-                  className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-indigo-600 transition-all duration-200 hover:-translate-y-0.5"
+                  className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center hover:bg-indigo-600 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/20"
                   aria-label={social.label}
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -95,8 +84,9 @@ const Footer = () => {
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-gray-400 hover:text-white transition-colors text-sm inline-flex items-center gap-1 group"
+                      className="text-gray-400 hover:text-white transition-colors text-sm inline-flex items-center gap-1.5 group"
                     >
+                      <span className="w-0 group-hover:w-2 h-0.5 bg-indigo-400 rounded-full transition-all duration-200" />
                       <span className="group-hover:translate-x-0.5 transition-transform duration-200">{link.label}</span>
                     </a>
                   </li>
@@ -111,7 +101,7 @@ const Footer = () => {
           <p className="text-gray-400 text-sm">
             &copy; {new Date().getFullYear()} MOMENTUM. All rights reserved.
           </p>
-          <div className="flex items-center space-x-6">
+          <div className="flex items-center gap-6">
             <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Privacy</a>
             <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Terms</a>
             <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Cookies</a>
@@ -122,4 +112,4 @@ const Footer = () => {
   )
 }
 
-export default Footer
+export default React.memo(Footer)

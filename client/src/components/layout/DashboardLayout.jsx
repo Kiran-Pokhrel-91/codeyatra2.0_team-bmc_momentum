@@ -1,20 +1,25 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback, useMemo } from 'react'
 import { Link, useLocation, Outlet } from 'react-router-dom'
+import Logo from '../UI/Logo'
 
 const DashboardLayout = () => {
   const location = useLocation()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const mainContentRef = useRef(null)
   const user = JSON.parse(localStorage.getItem('user') || '{"name": "Alex Rivera"}')
   const userName = user.name || 'Alex Rivera'
 
-  const handleLogoClick = () => {
+  const handleLogoClick = useCallback(() => {
     if (mainContentRef.current) {
       mainContentRef.current.scrollTo({ top: 0, behavior: 'smooth' })
     }
-  }
+  }, [])
 
-  const sidebarLinks = [
+  const toggleSidebar = useCallback(() => setSidebarCollapsed(prev => !prev), [])
+  const toggleMobileMenu = useCallback(() => setMobileMenuOpen(prev => !prev), [])
+
+  const sidebarLinks = useMemo(() => [
     {
       label: 'Dashboard', path: '/dashboard', icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -57,9 +62,9 @@ const DashboardLayout = () => {
         </svg>
       )
     },
-  ]
+  ], [])
 
-  const bottomLinks = [
+  const bottomLinks = useMemo(() => [
     {
       label: 'Settings', icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -75,106 +80,131 @@ const DashboardLayout = () => {
         </svg>
       )
     },
-  ]
+  ], [])
 
-  const pageTitle = sidebarLinks.find(l => l.path === location.pathname)?.label || 'Dashboard'
+  const SidebarContent = () => (
+    <>
+      {/* Logo */}
+      <div className={`py-5 border-b border-gray-100 ${sidebarCollapsed ? 'px-3' : 'px-5'}`}>
+        <Logo 
+          size={sidebarCollapsed ? 'sm' : 'md'} 
+          showText={!sidebarCollapsed} 
+          onClick={handleLogoClick}
+        />
+      </div>
 
-  return (
-    <div className="flex h-screen bg-gray-50/80 overflow-hidden">
-      {/* Sidebar */}
-      <aside
-        className={`bg-white border-r border-gray-100 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'w-68px' : 'w-60'
-          }`}
-        role="navigation"
-        aria-label="Sidebar navigation"
-      >
-        {/* Logo */}
-        <div className={`py-5 border-b border-gray-100 ${sidebarCollapsed ? 'px-3' : 'px-5'}`}>
-          <div
-            onClick={handleLogoClick}
-            className="flex items-center gap-2.5 cursor-pointer group"
-            role="button"
-            aria-label="Scroll to top"
-          >
-            <div className="w-9 h-9 bg-linear-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-200/50 shrink-0 group-hover:scale-110 transition-transform">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            {!sidebarCollapsed && (
-              <span className="text-lg font-bold bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">MOMENTUM</span>
-            )}
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className={`flex-1 py-4 space-y-1 ${sidebarCollapsed ? 'px-2' : 'px-3'}`}>
-          {sidebarLinks.map((link) => {
-            const isActive = location.pathname === link.path
-            return (
-              <Link
-                key={link.label}
-                to={link.path}
-                title={sidebarCollapsed ? link.label : undefined}
-                className={`flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 group relative ${sidebarCollapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5'
-                  } ${isActive
-                    ? 'bg-indigo-50 text-indigo-700 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                  }`}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <span className={`shrink-0 ${isActive ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-600'}`}>{link.icon}</span>
-                {!sidebarCollapsed && link.label}
-                {/* Tooltip for collapsed state */}
-                {sidebarCollapsed && (
-                  <span className="absolute left-full ml-2 px-2.5 py-1 bg-gray-900 text-white text-xs font-medium rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg pointer-events-none">
-                    {link.label}
-                  </span>
-                )}
-              </Link>
-            )
-          })}
-        </nav>
-
-        {/* Bottom Links */}
-        <div className={`py-4 border-t border-gray-100 space-y-1 ${sidebarCollapsed ? 'px-2' : 'px-3'}`}>
-          {bottomLinks.map((link) => (
-            <button
+      {/* Navigation */}
+      <nav className={`flex-1 py-4 space-y-1 ${sidebarCollapsed ? 'px-2' : 'px-3'}`}>
+        {sidebarLinks.map((link) => {
+          const isActive = location.pathname === link.path
+          return (
+            <Link
               key={link.label}
+              to={link.path}
               title={sidebarCollapsed ? link.label : undefined}
-              className={`flex items-center gap-3 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-all duration-200 w-full group relative ${sidebarCollapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5'
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 group relative ${sidebarCollapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5'
+                } ${isActive
+                  ? 'bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                 }`}
+              aria-current={isActive ? 'page' : undefined}
             >
-              <span className="text-gray-400 group-hover:text-gray-600 shrink-0">{link.icon}</span>
+              <span className={`shrink-0 transition-colors duration-200 ${isActive ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-600'}`}>{link.icon}</span>
               {!sidebarCollapsed && link.label}
+              {isActive && !sidebarCollapsed && (
+                <span className="ml-auto w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+              )}
+              {/* Tooltip for collapsed state */}
               {sidebarCollapsed && (
                 <span className="absolute left-full ml-2 px-2.5 py-1 bg-gray-900 text-white text-xs font-medium rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg pointer-events-none">
                   {link.label}
                 </span>
               )}
-            </button>
-          ))}
+            </Link>
+          )
+        })}
+      </nav>
 
-          {/* Collapse toggle */}
+      {/* Bottom Links */}
+      <div className={`py-4 border-t border-gray-100 space-y-1 ${sidebarCollapsed ? 'px-2' : 'px-3'}`}>
+        {bottomLinks.map((link) => (
           <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className={`flex items-center gap-3 rounded-xl text-sm font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all duration-200 w-full mt-2 ${sidebarCollapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5'
+            key={link.label}
+            title={sidebarCollapsed ? link.label : undefined}
+            className={`flex items-center gap-3 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-all duration-200 w-full group relative ${sidebarCollapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5'
               }`}
-            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <svg className={`w-5 h-5 transition-transform duration-300 ${sidebarCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
-            {!sidebarCollapsed && <span className="text-xs">Collapse</span>}
+            <span className="text-gray-400 group-hover:text-gray-600 shrink-0">{link.icon}</span>
+            {!sidebarCollapsed && link.label}
+            {sidebarCollapsed && (
+              <span className="absolute left-full ml-2 px-2.5 py-1 bg-gray-900 text-white text-xs font-medium rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg pointer-events-none">
+                {link.label}
+              </span>
+            )}
           </button>
-        </div>
+        ))}
+
+        {/* Collapse toggle (desktop only) */}
+        <button
+          onClick={toggleSidebar}
+          className={`hidden lg:flex items-center gap-3 rounded-xl text-sm font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all duration-200 w-full mt-2 ${sidebarCollapsed ? 'px-2.5 py-2.5 justify-center' : 'px-3 py-2.5'
+            }`}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <svg className={`w-5 h-5 transition-transform duration-300 ${sidebarCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+          </svg>
+          {!sidebarCollapsed && <span className="text-xs">Collapse</span>}
+        </button>
+      </div>
+    </>
+  )
+
+  return (
+    <div className="flex h-screen bg-gray-50/80 overflow-hidden">
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden" 
+          onClick={() => setMobileMenuOpen(false)} 
+        />
+      )}
+
+      {/* Sidebar - Desktop */}
+      <aside
+        className={`hidden lg:flex bg-white border-r border-gray-100 flex-col transition-all duration-300 ${sidebarCollapsed ? 'w-17' : 'w-60'}`}
+        role="navigation"
+        aria-label="Sidebar navigation"
+      >
+        <SidebarContent />
+      </aside>
+
+      {/* Sidebar - Mobile */}
+      <aside
+        className={`lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        role="navigation"
+        aria-label="Mobile navigation"
+      >
+        <SidebarContent />
       </aside>
 
       {/* Main Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between shrink-0" role="banner">
-          <div className="relative w-80">
+        <header className="bg-white border-b border-gray-100 px-4 sm:px-6 py-3 flex items-center justify-between shrink-0" role="banner">
+          {/* Mobile hamburger */}
+          <button
+            onClick={toggleMobileMenu}
+            className="lg:hidden p-2 -ml-1 rounded-xl hover:bg-gray-100 transition-colors mr-3"
+            aria-label="Open navigation menu"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
+          <div className="relative flex-1 max-w-md">
             <svg className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -185,7 +215,7 @@ const DashboardLayout = () => {
               aria-label="Search goals or tasks"
             />
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 ml-4">
             <button
               className="relative p-2 hover:bg-gray-50 rounded-xl transition-colors"
               aria-label="Notifications"
@@ -193,14 +223,14 @@ const DashboardLayout = () => {
               <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" aria-label="New notifications"></span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" aria-label="New notifications"></span>
             </button>
             <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-gray-800">{userName}</p>
                 <p className="text-xs text-gray-400">Pro Member</p>
               </div>
-              <div className="w-9 h-9 bg-linear-to-br from-indigo-400 to-purple-500 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-md shadow-indigo-200/50 cursor-pointer hover:shadow-lg transition-all duration-200" title={userName}>
+              <div className="w-9 h-9 bg-linear-to-br from-indigo-400 to-purple-500 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-md shadow-indigo-200/50 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200" title={userName}>
                 {userName.charAt(0)}
               </div>
             </div>

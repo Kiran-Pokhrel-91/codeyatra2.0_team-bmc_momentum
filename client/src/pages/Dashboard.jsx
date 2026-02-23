@@ -1,45 +1,45 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback, useMemo, memo } from 'react'
 import { Link } from 'react-router-dom'
 
-const Dashboard = () => {
+const Dashboard = memo(() => {
   const [checkedTasks, setCheckedTasks] = useState([])
-  const user = JSON.parse(localStorage.getItem('user') || '{"name": "Alex Rivera"}')
+  const user = useMemo(() => JSON.parse(localStorage.getItem('user') || '{"name": "Alex Rivera"}'), [])
   const userName = user.name || 'Alex Rivera'
 
-  const toggleTask = (id) => {
+  const toggleTask = useCallback((id) => {
     setCheckedTasks(prev =>
       prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
     )
-  }
+  }, [])
 
-  const goals = [
+  const goals = useMemo(() => [
     { title: 'Finish Q3 Marketing Plan', progress: 65, daysLeft: 4, color: 'emerald', icon: '🎯' },
     { title: 'Learn React Native', progress: 32, daysLeft: 12, color: 'amber', icon: '⭐' },
     { title: 'Marathon Training', progress: 88, daysLeft: 2, color: 'orange', icon: '🔥' },
-  ]
+  ], [])
 
-  const tasks = [
+  const tasks = useMemo(() => [
     { id: 1, title: 'Review Q3 Budget Allocation', time: '45 mins', category: 'STRATEGIC', aiRecommended: true },
     { id: 2, title: 'Finalize Component Library Documentation', time: '1h 30m', category: 'DEV', aiRecommended: true },
     { id: 3, title: 'Respond to Stakeholder Feedback', time: '20 mins', category: 'EMAIL', aiRecommended: false },
     { id: 4, title: 'Prepare Project Kickoff Deck', time: '1h', category: 'DESIGN', aiRecommended: true },
-  ]
+  ], [])
 
-  const badges = [
+  const badges = useMemo(() => [
     { color: 'from-emerald-400 to-emerald-600', icon: '⚡', label: 'Speed' },
     { color: 'from-amber-400 to-amber-600', icon: '⭐', label: 'Star' },
     { color: 'from-orange-400 to-orange-600', icon: '🔥', label: 'Fire' },
     { color: 'from-rose-400 to-rose-600', icon: '🎯', label: 'Target' },
-  ]
+  ], [])
 
-  const productivityBars = [35, 50, 42, 60, 55, 75, 90, 80, 65, 45]
+  const productivityBars = useMemo(() => [35, 50, 42, 60, 55, 75, 90, 80, 65, 45], [])
 
-  const getGreeting = () => {
+  const greeting = useMemo(() => {
     const hour = new Date().getHours()
     if (hour < 12) return 'Good Morning'
     if (hour < 17) return 'Good Afternoon'
     return 'Good Evening'
-  }
+  }, [])
 
   const colorMap = {
     emerald: { progress: 'bg-emerald-500', bg: 'bg-emerald-100', icon: 'bg-emerald-100' },
@@ -60,7 +60,7 @@ const Dashboard = () => {
               <span className="text-sm" aria-hidden="true">✨</span>
               <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">Your Daily Brief</span>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{getGreeting()}, {userName}</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{greeting}, {userName}</h1>
             <p className="text-gray-500">You're <span className="font-semibold text-indigo-600">82%</span> closer to your weekly milestone. Let's crush today's focus sessions.</p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-full" role="status">
@@ -262,6 +262,7 @@ const Dashboard = () => {
       </aside>
     </div>
   )
-}
+})
 
+Dashboard.displayName = 'Dashboard'
 export default Dashboard
