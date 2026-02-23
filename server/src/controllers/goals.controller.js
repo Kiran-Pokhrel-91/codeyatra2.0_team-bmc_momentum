@@ -53,14 +53,31 @@ Your approach:
 1. Be encouraging and user-centric - always consider the user's feedback and preferences
 2. Ask clarifying questions to understand the goal better (timeline, resources, constraints)
 3. Suggest milestones (not separate goals) - typically 3-6 milestones depending on complexity
-4. For each milestone, include specific CHECKPOINTS (small actionable items)
-5. Each milestone should have a clear outcome
-6. If the user provides feedback or modifications, incorporate them thoughtfully
+
+CRITICAL - Milestone Guidelines:
+- Milestones must be SPECIFIC and MEASURABLE achievements, not vague concepts
+- Examples of GOOD milestones: "Run 3 days this week", "Complete online course chapter 1", "Save $500", "Read 50 pages"
+- Examples of BAD milestones: "Build habit", "Make progress", "Get healthier", "Learn more"
+
+CRITICAL - Checkpoint Requirements:
+- EVERY milestone MUST have 2-3 specific checkpoints
+- Checkpoints are concrete, actionable items
+- Examples: "Walk 10 minutes every morning", "Complete 3 small, sets of exercises", "Watch tutorial video", "Practice for 30 minutes"
+- NEVER create a milestone with zero checkpoints
 
 Format your milestone suggestions with checkpoints:
-- Use clear headings for each milestone
-- List specific checkpoints under each milestone
-- Checkpoints should be small, actionable items (e.g., "Watch tutorial on X", "Practice Y for 30 mins")`;
+- Use clear headings for each milestone (specific achievement)
+- List 2-3 specific checkpoints under each milestone
+- Checkpoints should be concrete actions, not vague concepts
+
+Example for "I want to get fit" (beginner):
+GOOD:
+- Milestone: "Schedule and complete doctor checkup" → Checkpoints: "Call to book appointment", "Go to appointment", "Ask about exercise plan"
+- Milestone: "Walk 10 minutes daily for 2 weeks" → Checkpoints: "Walk 10 mins each morning", "Log activity in journal", "Increase to 15 mins in week 2"
+
+BAD (do NOT do this):
+- Milestone: "Baseline health check" with 0 checkpoints
+- Milestone: "Build healthy habits" with 0 checkpoints`;
 
     const messages = [...conversationHistory];
 
@@ -104,28 +121,30 @@ Return ONLY a JSON object with the following structure (no other text, no markdo
   "goal": "The main goal title",
   "milestones": [
     {
-      "title": "Milestone 1 title",
-      "description": "Brief description of this milestone",
+      "title": "Specific measurable milestone title",
+      "description": "Brief description",
       "checkpoints": [
-        { "text": "Specific checkpoint item 1", "done": false },
-        { "text": "Specific checkpoint item 2", "done": false },
-        { "text": "Specific checkpoint item 3", "done": false }
+        { "text": "Specific checkpoint 1", "done": false },
+        { "text": "Specific checkpoint 2", "done": false },
+        { "text": "Specific checkpoint 3", "done": false }
       ],
       "estimatedDays": 7,
       "priority": "high" | "medium" | "low"
-    },
-    {
-      "title": "Milestone 2 title",
-      ...
     }
   ]
 }
 
-IMPORTANT:
-- Each milestone MUST have checkpoints (an array of small actionable items)
-- Checkpoints should be specific and actionable
-- Include at least 2-3 checkpoints per milestone
-- Consider the user's feedback and preferences from the conversation`;
+CRITICAL RULES:
+1. EVERY milestone MUST have at least 2-3 checkpoints - NEVER create a milestone with 0 checkpoints
+2. Milestones must be SPECIFIC and MEASURABLE achievements (not vague concepts)
+3. If the conversation didn't explicitly discuss specific checkpoints, GENERATE appropriate ones based on the milestone title
+4. Examples of GOOD milestones: "Run 3 days this week", "Complete chapter 1", "Save $500", "Read 50 pages"
+5. Examples of BAD milestones (NEVER use): "Build habit", "Make progress", "Get healthier", "Be consistent"
+
+If no checkpoints were discussed, create appropriate checkpoints like:
+- For "exercise": "Walk/run for X minutes", "Complete workout video", "Log activity"
+- For "learning": "Watch tutorial", "Practice exercise", "Review notes"
+- For "finance": "Set budget", "Track expenses", "Review savings"`;
 
     const messages = [
       ...conversationHistory,
