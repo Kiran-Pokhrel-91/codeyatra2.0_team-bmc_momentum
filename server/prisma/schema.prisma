@@ -101,3 +101,36 @@ model Task {
   
   @@map("tasks")
 }
+
+/// Daily plan - stores tasks scheduled for a specific day
+model DailyPlan {
+  id          String   @id @default(uuid())
+  date        DateTime @db.Date
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  tasks       PlannedTask[]
+  
+  @@unique([date])
+  @@map("daily_plans")
+}
+
+/// A task planned for a specific day
+model PlannedTask {
+  id            String     @id @default(uuid())
+  title         String
+  description   String?
+  estimatedMins Int?
+  startTime     String?
+  endTime       String?
+  status        TaskStatus @default(PENDING)
+  orderIndex    Int        @default(0)
+  createdAt     DateTime   @default(now())
+  
+  // Relations
+  dailyPlanId   String
+  dailyPlan     DailyPlan  @relation(fields: [dailyPlanId], references: [id], onDelete: Cascade)
+  
+  @@map("planned_tasks")
+}

@@ -453,6 +453,40 @@ export const planningApi = {
   },
 };
 
+// Daily Plan API
+export const dailyPlanApi = {
+  async getDailyPlan(date) {
+    const response = await fetch(`${API_BASE}/daily-plan/${date}`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch daily plan');
+    }
+    return response.json();
+  },
+
+  async saveDailyPlan(date, tasks) {
+    const response = await fetch(`${API_BASE}/daily-plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, tasks }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to save daily plan');
+    }
+    return response.json();
+  },
+
+  async getUpcomingPlans(days = 7) {
+    const response = await fetch(`${API_BASE}/daily-plan/upcoming?days=${days}`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch upcoming plans');
+    }
+    return response.json();
+  },
+};
+
 // Health check
 export const checkHealth = async () => {
   const response = await fetch(`${API_BASE}/health`);

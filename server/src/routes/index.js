@@ -4,6 +4,7 @@ import goalsRoutes from './goals.routes.js';
 import milestonesRoutes from './milestones.routes.js';
 import tasksRoutes from './tasks.routes.js';
 import planningRoutes from './planning.routes.js';
+import dailyPlanRoutes from './dailyPlan.routes.js';
 
 const router = Router();
 
@@ -13,5 +14,6 @@ router.use('/goals', goalsRoutes);
 router.use('/milestones', milestonesRoutes);
 router.use('/tasks', tasksRoutes);
 router.use('/planning', planningRoutes);
+router.use('/daily-plan', dailyPlanRoutes);
 
 export default router;
