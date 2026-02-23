@@ -20,6 +20,7 @@ const Goals = () => {
 
   // AI Discussion state
   const [aiObjective, setAiObjective] = useState('')
+  const [aiProficiencyLevel, setAiProficiencyLevel] = useState('INTERMEDIATE')
   const [showChat, setShowChat] = useState(false)
   const [chatMessages, setChatMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
@@ -198,15 +199,22 @@ const Goals = () => {
     setChatMessages([])
     setStreamingContent('')
 
+    const proficiencyContext = {
+      'BEGINNER': 'I am a beginner in this area. Please be very thorough, explain concepts simply, and break things down into small, specific steps.',
+      'INTERMEDIATE': 'I have some experience in this area. Provide a balanced breakdown with moderate detail.',
+      'ADVANCED': 'I am experienced in this area. Be concise and focus on the key milestones.',
+      'EXPERT': 'I am an expert in this area. Be very concise and just give me the main milestones.'
+    }
+
     const userMessage = { 
       role: 'user', 
-      content: `I want to achieve this goal: "${aiObjective}". Can you help me break it down into manageable subgoals?` 
+      content: `I want to achieve this goal: "${aiObjective}". ${proficiencyContext[aiProficiencyLevel]} Can you help me break it down into manageable milestones with specific checkpoints?` 
     }
     setChatMessages([userMessage])
 
     try {
       const response = await goalApi.discuss(
-        { goal: aiObjective, conversationHistory: [], enableThinking: thinkingMode },
+        { goal: aiObjective, proficiencyLevel: aiProficiencyLevel, conversationHistory: [], enableThinking: thinkingMode },
         (chunk, fullContent) => {
           setStreamingContent(fullContent)
         }
@@ -270,14 +278,28 @@ const Goals = () => {
         conversationHistory: chatMessages
       })
 
-      if (response.subgoals && response.subgoals.length > 0) {
-        for (const subgoal of response.subgoals) {
-          await createGoal({
-            title: subgoal.title,
-            description: subgoal.description || null,
-            targetDate: subgoal.estimatedDays ? new Date(Date.now() + subgoal.estimatedDays * 86400000).toISOString() : null,
+      const goalTitle = response.goal || aiObjective
+      const milestones = response.milestones || []
+
+      if (milestones.length > 0) {
+        // Create ONE goal with all milestones
+        const newGoal = await createGoal({
+          title: goalTitle,
+          description: null,
+          targetDate: null,
+        })
+
+        // Create milestones with checklists
+        for (let i = 0; i < milestones.length; i++) {
+          const milestone = milestones[i]
+          const createdMilestone = await goalApi.createMilestone(newGoal.id, {
+            title: milestone.title,
+            description: milestone.description || null,
+            targetDate: milestone.estimatedDays ? new Date(Date.now() + milestone.estimatedDays * 86400000).toISOString() : null,
+            checklist: milestone.checkpoints || []
           })
         }
+
         await fetchGoals()
         setShowChat(false)
         setAiObjective('')
@@ -385,20 +407,17 @@ const Goals = () => {
                   placeholder="e.g., Launch my SaaS MVP by Q3, Learn Spanish to conversational level..."
                   className="flex-1 px-5 py-4 bg-white border border-gray-200 rounded-2xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 transition-all"
                 />
-                <button
-                  onClick={() => setThinkingMode(!thinkingMode)}
-                  title={thinkingMode ? "Thinking mode ON - AI will reason deeply" : "Thinking mode OFF - Faster responses"}
-                  className={`px-4 py-4 rounded-2xl font-semibold text-sm transition-all duration-300 flex items-center gap-2 border-2 ${
-                    thinkingMode 
-                      ? 'bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100' 
-                      : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
-                  }`}
+                <select
+                  value={aiProficiencyLevel}
+                  onChange={(e) => setAiProficiencyLevel(e.target.value)}
+                  className="px-3 py-4 bg-white border border-gray-200 rounded-2xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300"
+                  title="Your proficiency level"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                  <span className="hidden sm:inline">{thinkingMode ? 'Deep' : 'Fast'}</span>
-                </button>
+                  <option value="BEGINNER">Beginner</option>
+                  <option value="INTERMEDIATE">Intermediate</option>
+                  <option value="ADVANCED">Advanced</option>
+                  <option value="EXPERT">Expert</option>
+                </select>
                 <button
                   onClick={startGoalDiscussion}
                   disabled={!aiObjective.trim() || isLoading}
@@ -411,7 +430,7 @@ const Goals = () => {
                 </button>
               </div>
               <p className="text-xs text-gray-400 mt-2">
-                AI will help you break down this goal into achievable subgoals through conversation.
+                AI will help you break down this goal into milestones with checkpoints. Be thorough for beginners, concise for experts.
                 {thinkingMode && <span className="text-purple-500 ml-1">(Deep thinking enabled)</span>}
               </p>
             </div>
