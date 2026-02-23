@@ -1,0 +1,286 @@
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8fafc;
+    position: relative;
+    overflow: hidden;
+    padding: 2rem;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 450px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 2rem;
+    padding: 3rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.05);
+    z-index: 10;
+    position: relative;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.login-logo {
+    width: 3.5rem;
+    height: 3.5rem;
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+}
+
+.login-header h1 {
+    font-size: 1.875rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.025em;
+}
+
+.login-header p {
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0.25rem;
+}
+
+.forgot-password {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6366f1;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.forgot-password:hover {
+    color: #4f46e5;
+    text-decoration: underline;
+}
+
+.form-group input {
+    padding: 0.875rem 1.25rem;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    font-size: 1rem;
+    color: #1e293b;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.form-group input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+.login-button {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    color: white;
+    border: none;
+    border-radius: 1rem;
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.2);
+}
+
+.login-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.3);
+}
+
+.login-button:active {
+    transform: translateY(0);
+}
+
+.login-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1.5rem 0;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.login-divider::before,
+.login-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.login-divider:not(:empty)::before {
+    margin-right: 1rem;
+}
+
+.login-divider:not(:empty)::after {
+    margin-left: 1rem;
+}
+
+.login-options {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.forgot-password {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #6366f1;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.forgot-password:hover {
+    color: #4f46e5;
+    text-decoration: underline;
+}
+
+.social-login-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.social-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    background: white;
+    color: #475569;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.social-button:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}
+
+.social-button.facebook {
+    color: #1877f2;
+}
+
+.login-footer {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.login-footer p {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+/* Background Decorations */
+.bg-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 1;
+    opacity: 0.4;
+}
+
+.blob-1 {
+    width: 500px;
+    height: 500px;
+    background: #e0e7ff;
+    top: -100px;
+    right: -100px;
+    animation: float 20s infinite alternate;
+}
+
+.blob-2 {
+    width: 400px;
+    height: 400px;
+    background: #fdf2f8;
+    bottom: -50px;
+    left: -50px;
+    animation: float 15s infinite alternate-reverse;
+}
+
+.blob-3 {
+    width: 300px;
+    height: 300px;
+    background: #f5f3ff;
+    top: 40%;
+    left: 20%;
+}
+
+@keyframes float {
+    from {
+        transform: translate(0, 0);
+    }
+
+    to {
+        transform: translate(30px, 30px);
+    }
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fade-in 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}

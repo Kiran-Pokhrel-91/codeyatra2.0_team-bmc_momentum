@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 
 const Leaderboard = () => {
   const [activeTab, setActiveTab] = useState('global')
+  const userItem = JSON.parse(localStorage.getItem('user') || '{"name": "Alex Rivera"}')
+  const userName = userItem.name || 'Alex Rivera'
 
   const rankings = [
     {
@@ -43,9 +45,9 @@ const Leaderboard = () => {
     {
       rank: 4,
       badge: null,
-      name: 'Alex Rivera',
+      name: userName,
       level: 'Level 11 Focus Master',
-      avatar: 'AR',
+      avatar: userName.charAt(0) + (userName.includes(' ') ? userName.split(' ')[1].charAt(0) : ''),
       avatarBg: 'bg-indigo-400',
       streak: 7,
       tasks: 298,
@@ -96,7 +98,7 @@ const Leaderboard = () => {
             </span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Welcome to the Hall of Focus</h1>
-          <p className="text-sm text-gray-500">Compete with the community to earn exclusive badges and climb the ranks.<br/>Every focus minute counts towards your legacy.</p>
+          <p className="text-sm text-gray-500">Compete with the community to earn exclusive badges and climb the ranks.<br />Every focus minute counts towards your legacy.</p>
         </div>
         <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-5 py-3 text-right min-w-[220px]">
           <p className="text-xs font-bold text-indigo-700 mb-1.5">Season Goal: 50,000 Group XP</p>
@@ -132,11 +134,10 @@ const Leaderboard = () => {
                     onClick={() => setActiveTab(tab)}
                     role="tab"
                     aria-selected={activeTab === tab}
-                    className={`px-4 py-1.5 rounded-md text-xs font-semibold capitalize transition-all duration-200 ${
-                      activeTab === tab
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
+                    className={`px-4 py-1.5 rounded-md text-xs font-semibold capitalize transition-all duration-200 ${activeTab === tab
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                      }`}
                   >
                     {tab === 'focus circle' ? 'Focus Circle' : 'Global'}
                   </button>
@@ -159,11 +160,10 @@ const Leaderboard = () => {
                 <div
                   key={user.rank}
                   role="listitem"
-                  className={`grid grid-cols-[40px_1fr_auto] sm:grid-cols-[60px_1fr_90px_90px_120px] items-center px-4 py-3.5 transition-colors ${
-                    user.isYou
-                      ? 'bg-indigo-50/60 border-l-[3px] border-l-indigo-500 rounded-r-lg'
-                      : 'hover:bg-gray-50/50'
-                  }`}
+                  className={`grid grid-cols-[40px_1fr_auto] sm:grid-cols-[60px_1fr_90px_90px_120px] items-center px-4 py-3.5 transition-colors ${user.isYou
+                    ? 'bg-indigo-50/60 border-l-[3px] border-l-indigo-500 rounded-r-lg'
+                    : 'hover:bg-gray-50/50'
+                    }`}
                 >
                   {/* Rank */}
                   <div className="flex items-center">
@@ -322,11 +322,10 @@ const Leaderboard = () => {
                 <div
                   key={i}
                   role="listitem"
-                  className={`flex flex-col items-center py-2.5 px-1 rounded-xl transition-all ${
-                    badge.unlocked
-                      ? 'bg-gray-50 hover:bg-indigo-50'
-                      : 'bg-gray-50/50 opacity-40'
-                  }`}
+                  className={`flex flex-col items-center py-2.5 px-1 rounded-xl transition-all ${badge.unlocked
+                    ? 'bg-gray-50 hover:bg-indigo-50'
+                    : 'bg-gray-50/50 opacity-40'
+                    }`}
                   aria-label={`${badge.label} badge${badge.unlocked ? ' (unlocked)' : ' (locked)'}`}
                 >
                   <span className="text-xl mb-1" aria-hidden="true">{badge.icon}</span>

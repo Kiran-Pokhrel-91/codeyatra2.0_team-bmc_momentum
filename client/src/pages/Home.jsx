@@ -80,7 +80,7 @@ const Home = () => {
               </span>
               <span className="text-sm font-semibold text-indigo-600 tracking-wide">Your Personal Productivity Partner</span>
             </div>
-            
+
             {/* Main Heading */}
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-gray-900 mb-8 leading-[1.1] tracking-tight">
               Transform Your
@@ -88,17 +88,17 @@ const Home = () => {
                 Daily Routine
               </span>
             </h1>
-            
+
             {/* Subheading */}
             <p className="text-lg sm:text-xl text-gray-500 max-w-xl mx-auto mb-12 leading-relaxed">
-              MOMENTUM helps you organize tasks, track habits, and achieve your goals with a beautiful, 
+              MOMENTUM helps you organize tasks, track habits, and achieve your goals with a beautiful,
               intuitive interface designed for modern life.
             </p>
-            
+
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/login')}
                 className="group w-full sm:w-auto px-8 py-4 bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center justify-center gap-3"
               >
                 <span>Get Started Free</span>
@@ -147,7 +147,7 @@ const Home = () => {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature, index) => (
-              <div 
+              <div
                 key={index}
                 className="group p-7 bg-gray-50/80 backdrop-blur-sm border border-gray-100 rounded-2xl hover:bg-linear-to-br hover:from-indigo-500 hover:to-purple-600 hover:border-transparent hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-200/50 transition-all duration-300 cursor-pointer"
               >
@@ -187,7 +187,7 @@ const Home = () => {
                 Join thousands of users who have already improved their productivity and well-being with MOMENTUM.
               </p>
               <button
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/login')}
                 className="group px-8 py-4 bg-white text-indigo-600 rounded-2xl font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 inline-flex items-center gap-3"
               >
                 <span>Start Your Journey Today</span>

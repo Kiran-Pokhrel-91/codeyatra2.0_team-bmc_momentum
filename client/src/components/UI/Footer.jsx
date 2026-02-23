@@ -52,7 +52,12 @@ const Footer = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Brand */}
           <div className="lg:col-span-1">
-            <Link to="/" className="flex items-center space-x-2 mb-6 group" aria-label="MOMENTUM Home">
+            <div
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="flex items-center space-x-2 mb-6 group cursor-pointer"
+              role="button"
+              aria-label="Scroll to top"
+            >
               <div className="w-10 h-10 bg-linear-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center group-hover:shadow-lg group-hover:shadow-indigo-500/30 transition-all duration-300">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -61,7 +66,7 @@ const Footer = () => {
               <span className="text-xl font-bold bg-linear-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
                 MOMENTUM
               </span>
-            </Link>
+            </div>
             <p className="text-gray-400 mb-6 leading-relaxed text-sm">
               Your personal productivity companion. Transform your daily routine and achieve your goals with AI-powered insights.
             </p>
