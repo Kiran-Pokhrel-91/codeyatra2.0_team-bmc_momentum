@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { planningApi, goalApi, dailyPlanApi } from '../services/api'
+import { MarkdownMessage } from '../components/UI/AIChat'
 
 const ChatSchedular = () => {
   const [messages, setMessages] = useState([])
@@ -14,8 +15,11 @@ const ChatSchedular = () => {
   const [thinkingMode, setThinkingMode] = useState(true)
   const [goals, setGoals] = useState([])
   const [loadingGoals, setLoadingGoals] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState(null) // { type: 'success' | 'error', message: string }
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
+  const saveStatusTimerRef = useRef(null)
 
   // Fetch goals from API on mount
   useEffect(() => {
@@ -46,15 +50,22 @@ const ChatSchedular = () => {
   const quickActions = [
     "I want to focus on high priority tasks",
     "Give me more time for deep work",
-    "I need a lighter schedule today",
+    "I need a lighter schedule tomorrow",
     "Add a longer lunch break",
-    "This looks good, finalize it"
+    "Finalize the schedule"
   ]
 
-  const taskIconColors = {
-    high: 'bg-red-100 text-red-600',
-    medium: 'bg-amber-100 text-amber-600',
-    low: 'bg-emerald-100 text-emerald-600',
+  // Auto-dismiss save status after 5 seconds
+  useEffect(() => {
+    return () => {
+      if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current)
+    }
+  }, [])
+
+  const showSaveStatus = (type, message) => {
+    setSaveStatus({ type, message })
+    if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current)
+    saveStatusTimerRef.current = setTimeout(() => setSaveStatus(null), 5000)
   }
 
   const scrollToBottom = () => {
@@ -65,17 +76,23 @@ const ChatSchedular = () => {
     scrollToBottom()
   }, [messages, isTyping])
 
-  // Initialize chat with AI suggestions
-  useEffect(() => {
-    if (!isInitialized) {
-      initializeChat()
-    }
-  }, [isInitialized])
-
   const initializeChat = async () => {
     setIsTyping(true)
     setError(null)
     setStreamingContent('')
+
+    // If no goals exist, show a helpful message without calling the server
+    if (goals.length === 0) {
+      setMessages([
+        {
+          role: 'assistant',
+          content: "Good morning! It looks like you don't have any goals set up yet. Head over to the **Goals** page to create some goals with milestones and checkpoints, then come back here and I'll help you plan your day around them!"
+        }
+      ])
+      setIsInitialized(true)
+      setIsTyping(false)
+      return
+    }
 
     try {
       const response = await planningApi.suggest(
@@ -122,6 +139,8 @@ const ChatSchedular = () => {
     if (!messageText || isTyping) return
 
     const newMessages = [...messages, { role: 'user', content: messageText }]
+    // Filter out error messages - LLMs only accept system/user/assistant roles
+    const validHistory = newMessages.filter(m => m.role !== 'error')
     setMessages(newMessages)
     setInput('')
     setIsTyping(true)
@@ -129,14 +148,23 @@ const ChatSchedular = () => {
     setStreamingContent('')
 
     try {
-      // Check if user wants to finalize
-      const isFinalize = messageText.toLowerCase().includes('finalize') || 
-                         messageText.toLowerCase().includes('looks good') ||
-                         messageText.toLowerCase().includes('confirm')
+      // Check if user wants to finalize the schedule
+      const lowerMessage = messageText.toLowerCase().trim()
+      const finalizePatterns = [
+        /\bfinalize\b/,
+        /\blooks?\s+good\b.*\b(finalize|save|confirm|done|ready|go\s+ahead|set)\b/,
+        /\b(finalize|save|confirm|done|ready|go\s+ahead|set)\b.*\blooks?\s+good\b/,
+        /\bconfirm\s+(the\s+)?(schedule|plan|tasks?)\b/,
+        /\b(save|lock\s*in|set)\s+(the\s+)?(schedule|plan)\b/,
+        /\b(i'?m|that'?s|this\s+is)\s+(happy|satisfied|good|done|ready)\b/,
+        /\blet'?s?\s+(go\s+with|do)\s+(this|that|it)\b/,
+        /\b(perfect|great|awesome),?\s*(finalize|save|confirm|let'?s?\s+go)/,
+      ]
+      const isFinalize = finalizePatterns.some(pattern => pattern.test(lowerMessage))
 
       if (isFinalize && messages.length >= 2) {
         // Try to extract the schedule (non-streaming JSON endpoint)
-        const response = await planningApi.finalize({ conversationHistory: newMessages })
+        const response = await planningApi.finalize({ conversationHistory: validHistory })
         
         if (response.schedule && response.schedule.length > 0) {
           setScheduledTasks(response.schedule)
@@ -174,7 +202,7 @@ const ChatSchedular = () => {
             {
               currentPlan: scheduledTasks,
               userRequest: messageText,
-              conversationHistory: newMessages.slice(-4), // Last few messages for context
+              conversationHistory: validHistory.slice(-4), // Last few messages for context
               enableThinking: thinkingMode
             },
             onChunk
@@ -185,7 +213,7 @@ const ChatSchedular = () => {
               goals,
               existingTasks: scheduledTasks,
               userPreferences: messageText,
-              conversationHistory: newMessages,
+              conversationHistory: validHistory,
               enableThinking: thinkingMode
             },
             onChunk
@@ -215,8 +243,7 @@ const ChatSchedular = () => {
     let blocks = 0
 
     tasks.forEach(task => {
-      const duration = task.duration || '60m'
-      const minutes = parseInt(duration) || 60
+      const minutes = task.estimatedMins || 60
       totalMinutes += minutes
       if (minutes >= 60) blocks++
     })
@@ -247,7 +274,10 @@ const ChatSchedular = () => {
   }
 
   const handleConfirmAndSave = async () => {
-    if (scheduledTasks.length === 0) return
+    if (scheduledTasks.length === 0 || saving) return
+
+    setSaving(true)
+    setSaveStatus(null)
 
     try {
       const tomorrow = new Date()
@@ -257,17 +287,20 @@ const ChatSchedular = () => {
       const tasksToSave = scheduledTasks.map(task => ({
         title: task.title,
         description: task.description || null,
-        estimatedMins: task.duration ? parseInt(task.duration) : null,
-        status: task.done ? 'COMPLETED' : 'PENDING'
+        estimatedMins: task.estimatedMins || null,
+        startTime: task.startTime || null,
+        endTime: task.endTime || null,
+        status: 'PENDING'
       }))
 
       await dailyPlanApi.saveDailyPlan(tomorrow.toISOString().split('T')[0], tasksToSave)
       
-      alert('Daily plan saved successfully! You can view it in Focus Mode tomorrow.')
-      resetChat()
+      showSaveStatus('success', 'Daily plan saved! View it in Focus Mode tomorrow.')
     } catch (err) {
       console.error('Error saving daily plan:', err)
-      alert('Failed to save daily plan. Please try again.')
+      showSaveStatus('error', `Failed to save: ${err.message}. Please try again.`)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -334,6 +367,36 @@ const ChatSchedular = () => {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5" role="log" aria-label="Chat messages" aria-live="polite">
+          {/* Landing state - show before chat is initialized */}
+          {!isInitialized && !isTyping && (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center mb-5">
+                <svg className="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Plan Your Day</h2>
+              <p className="text-sm text-gray-500 max-w-sm mb-6">
+                {loadingGoals
+                  ? 'Loading your goals...'
+                  : goals.length === 0
+                    ? "You don't have any goals yet. Head to the Goals page to create some, then come back to plan your day."
+                    : `You have ${goals.length} goal${goals.length === 1 ? '' : 's'} with active milestones. Start a planning session and the AI will help you build a schedule for tomorrow.`
+                }
+              </p>
+              <button
+                onClick={initializeChat}
+                disabled={loadingGoals}
+                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Schedule Tomorrow
+              </button>
+            </div>
+          )}
+
           {messages.map((message, index) => (
             <div key={index}>
               <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -355,7 +418,7 @@ const ChatSchedular = () => {
                       )}
                     </div>
                   )}
-                  <div>
+                   <div className="min-w-0">
                     {message.role === 'error' ? (
                       <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-gradient-to-br from-red-50 to-rose-50 border border-red-200 shadow-sm">
                         <div className="flex items-start gap-2">
@@ -365,13 +428,13 @@ const ChatSchedular = () => {
                           <p className="text-sm leading-relaxed text-red-700 font-medium whitespace-pre-line">{message.content}</p>
                         </div>
                       </div>
+                    ) : message.role === 'assistant' ? (
+                      <div className="px-4 py-3 rounded-2xl rounded-tl-md bg-gradient-to-br from-gray-50 to-white border border-gray-100 shadow-sm">
+                        <MarkdownMessage content={message.content} />
+                      </div>
                     ) : (
-                      <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-line ${
-                        message.role === 'assistant'
-                          ? 'bg-gray-50 border border-gray-100 text-gray-700 rounded-tl-md'
-                          : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-tr-md shadow-md shadow-indigo-200'
-                      }`}>
-                        {message.content}
+                      <div className="px-4 py-3 rounded-2xl rounded-tr-md bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-200">
+                        <p className="text-sm leading-relaxed whitespace-pre-line">{message.content}</p>
                       </div>
                     )}
                   </div>
@@ -389,9 +452,9 @@ const ChatSchedular = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
-                <div className="px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl rounded-tl-md text-sm leading-relaxed whitespace-pre-line text-gray-700">
-                  {streamingContent}
-                  <span className="inline-block w-2 h-4 bg-indigo-500 ml-0.5 animate-pulse" />
+                <div className="min-w-0 px-4 py-3 bg-gradient-to-br from-gray-50 to-white border border-gray-100 rounded-2xl rounded-tl-md shadow-sm">
+                  <MarkdownMessage content={streamingContent} />
+                  <span className="inline-block w-2 h-4 bg-indigo-500 rounded-sm ml-0.5 animate-pulse" />
                 </div>
               </div>
             </div>
@@ -532,24 +595,26 @@ const ChatSchedular = () => {
             <ul className="space-y-3" role="list">
               {scheduledTasks.map((task, i) => (
                 <li key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors">
-                  <div className={`w-8 h-8 ${taskIconColors[task.priority] || 'bg-indigo-100 text-indigo-600'} rounded-lg flex items-center justify-center shrink-0 mt-0.5`}>
+                  <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-gray-500">{task.time}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                        task.priority === 'high' ? 'bg-red-100 text-red-600' :
-                        task.priority === 'medium' ? 'bg-amber-100 text-amber-600' :
-                        'bg-emerald-100 text-emerald-600'
-                      }`}>
-                        {task.priority || 'medium'}
+                      <span className="text-xs font-semibold text-gray-500">
+                        {task.startTime}{task.endTime ? ` - ${task.endTime}` : ''}
                       </span>
+                      {task.estimatedMins && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-indigo-50 text-indigo-500">
+                          {task.estimatedMins}m
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm font-medium text-gray-800 truncate">{task.title}</p>
-                    <span className="text-[11px] text-gray-400">{task.duration}</span>
+                    {task.description && (
+                      <p className="text-[11px] text-gray-400 truncate">{task.description}</p>
+                    )}
                   </div>
                 </li>
               ))}
@@ -576,17 +641,54 @@ const ChatSchedular = () => {
           </div>
         )}
 
+        {/* Save Status Toast */}
+        {saveStatus && (
+          <div className={`p-3 rounded-xl text-sm font-medium flex items-center gap-2 ${
+            saveStatus.type === 'success'
+              ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+              : 'bg-red-50 border border-red-200 text-red-700'
+          }`}>
+            {saveStatus.type === 'success' ? (
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+            {saveStatus.message}
+            <button onClick={() => setSaveStatus(null)} className="ml-auto text-current opacity-60 hover:opacity-100">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="mt-auto space-y-2">
           <button 
             onClick={handleConfirmAndSave}
-            disabled={scheduledTasks.length === 0}
+            disabled={scheduledTasks.length === 0 || saving}
             className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-sm shadow-md shadow-indigo-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            Confirm & Save for Tomorrow
+            {saving ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Saving...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Confirm & Save for Tomorrow
+              </>
+            )}
           </button>
           <button 
             onClick={resetChat}

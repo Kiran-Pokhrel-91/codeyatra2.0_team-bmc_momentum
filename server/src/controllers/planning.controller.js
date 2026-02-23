@@ -9,43 +9,47 @@ export async function suggestPlan(req, res) {
   try {
     const { goals, existingTasks, userPreferences, conversationHistory = [], enableThinking = true } = req.body;
 
-    if (!goals || goals.length === 0) {
-      return res.status(400).json({ error: 'Goals are required for planning' });
-    }
+    const goalsContext = (!goals || goals.length === 0)
+      ? 'The user has no goals set up yet. Help them think about what they could work on tomorrow and encourage them to set up goals.'
+      : goals.map(g => {
+        const milestonesStr = g.milestones?.map(m => {
+          const checkpoints = m.checklist?.map(c => `    - [${c.done ? 'x' : ' '}] ${c.text}`).join('\n') || '    No checkpoints';
+          return `  Milestone: ${m.title}\n${checkpoints}`;
+        }).join('\n') || '  No milestones yet';
+        return `Goal: ${g.title}\nProgress: ${g.progress || 0}%\n${milestonesStr}`;
+      }).join('\n\n');
 
-    const systemPrompt = `You are an AI daily planner that helps users plan their tomorrow based on their goals and priorities.
+    const systemPrompt = `You are an AI daily planner assistant. Your ONLY job is to help the user build a schedule for TOMORROW. You are NOT a real-time coach.
 
-Your approach:
-1. Analyze the user's goals and their subgoals/tasks
-2. Consider importance, urgency, and deadlines
-3. Suggest a realistic daily schedule (typically 4-8 tasks)
-4. Account for energy levels (harder tasks in the morning when energy is typically higher)
-5. Include breaks and buffer time
-6. Be flexible - the user can modify the suggestions
+Here are the user's current goals and progress:
 
-When suggesting tasks, consider:
-- High priority items that are approaching deadlines
-- Tasks that unblock other work
-- A mix of quick wins and deeper work
-- The user's stated preferences and constraints
+${goalsContext}
 
-Format your suggestions clearly with estimated time for each task.`;
+Important rules:
+- You are planning what the user will do TOMORROW, not right now
+- NEVER tell the user to "go do" something, "start now", or say you'll "wait" for them
+- NEVER act as if the user should be executing tasks during this conversation
+- This is an advance planning session — the result will be saved and used in a focused timer session tomorrow
+- Base your suggestions on the user's goals, milestones, and incomplete checkpoints shown above
+- Prioritize incomplete checkpoints that advance milestones closest to completion
 
-    const goalsContext = goals.map(g => {
-      const tasksStr = g.tasks?.map(t => `  - ${t.title} (${t.done ? 'done' : 'pending'})`).join('\n') || '  No tasks yet';
-      return `Goal: ${g.title}\nProgress: ${g.progress || 0}%\nTasks:\n${tasksStr}`;
-    }).join('\n\n');
+When proposing a schedule for tomorrow:
+- Break the day into time blocks (e.g. "09:00 - 10:30: Work on X")
+- Each task should have a clear title and a brief description of what to do
+- Include realistic time estimates and breaks
+- Keep the total day realistic (6-10 productive hours)
+- Ask clarifying questions about tomorrow's plan (e.g. "What time do you plan to wake up tomorrow?", work hours, priorities) before proposing a full schedule
+
+Keep your responses concise.`;
 
     const messages = [...conversationHistory];
 
     if (conversationHistory.length === 0) {
-      let userContent = `Here are my current goals and tasks:\n\n${goalsContext}\n\n`;
+      let userContent = 'Please suggest what I should work on tomorrow, considering my goals and priorities.';
       
       if (userPreferences) {
-        userContent += `My preferences: ${userPreferences}\n\n`;
+        userContent += `\n\nMy preferences: ${userPreferences}`;
       }
-      
-      userContent += 'Please suggest what I should work on tomorrow, considering importance and priority. Start by asking any clarifying questions if needed.';
       
       messages.push({ role: 'user', content: userContent });
     }
@@ -112,20 +116,26 @@ export async function finalizePlan(req, res) {
       return res.status(400).json({ error: 'Conversation history is required' });
     }
 
-    const systemPrompt = `Based on the planning conversation, extract the final agreed-upon daily schedule.
+    const systemPrompt = `Based on the planning conversation, extract the final agreed-upon daily schedule for tomorrow.
 
 Return ONLY a JSON array with the following structure (no other text, no markdown code blocks):
 [
   {
-    "time": "09:00",
-    "duration": "90m",
     "title": "Task title",
-    "goalId": "optional - which goal this relates to",
-    "priority": "high" | "medium" | "low"
+    "description": "Brief actionable description of what to do during this block",
+    "startTime": "09:00",
+    "endTime": "10:30",
+    "estimatedMins": 90
   }
 ]
 
-Order tasks by time. Include breaks if they were discussed.`;
+Rules:
+- "title" is a short task name
+- "description" is a 1-2 sentence actionable instruction for the task
+- "startTime" and "endTime" are in 24-hour "HH:MM" format
+- "estimatedMins" is the duration in minutes as an integer
+- Order tasks by startTime
+- Include breaks if they were discussed`;
 
     const messages = [
       ...conversationHistory,

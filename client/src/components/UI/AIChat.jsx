@@ -350,4 +350,5 @@ const AIChat = ({
   return chatContent
 }
 
+export { MarkdownMessage }
 export default AIChat

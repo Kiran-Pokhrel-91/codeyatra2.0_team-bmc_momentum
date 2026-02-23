@@ -5,16 +5,13 @@ import { dailyPlanApi } from '../services/api'
 const FocusMode = () => {
   const navigate = useNavigate()
   const [totalSeconds, setTotalSeconds] = useState(25 * 60)
-  const [isRunning, setIsRunning] = useState(true)
+  const [isRunning, setIsRunning] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [tasks, setTasks] = useState([])
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [allDone, setAllDone] = useState(false)
   const intervalRef = useRef(null)
-
-  const currentSession = 2
-  const totalSessions = 4
-  const initialSeconds = 25 * 60
 
   // Fetch tomorrow's tasks on mount
   useEffect(() => {
@@ -27,6 +24,9 @@ const FocusMode = () => {
         const plan = await dailyPlanApi.getDailyPlan(dateStr)
         if (plan && plan.tasks && plan.tasks.length > 0) {
           setTasks(plan.tasks)
+          const mins = plan.tasks[0]?.estimatedMins || 25
+          setTotalSeconds(mins * 60)
+          setIsRunning(true)
         }
       } catch (err) {
         console.error('Error fetching tomorrow tasks:', err)
@@ -38,6 +38,8 @@ const FocusMode = () => {
   }, [])
 
   const currentTask = tasks[currentTaskIndex] || null
+  const currentMins = currentTask?.estimatedMins || 25
+  const initialSeconds = currentMins * 60
 
   useEffect(() => {
     if (isRunning && !isPaused) {
@@ -57,7 +59,7 @@ const FocusMode = () => {
 
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
-  const progress = 1 - totalSeconds / initialSeconds
+  const progress = initialSeconds > 0 ? 1 - totalSeconds / initialSeconds : 0
   const circumference = 2 * Math.PI * 140
   const strokeDashoffset = circumference * (1 - progress)
 
@@ -66,9 +68,19 @@ const FocusMode = () => {
   }, [])
 
   const completeTask = useCallback(() => {
-    setIsRunning(false)
-    setTotalSeconds(0)
-  }, [])
+    if (currentTaskIndex < tasks.length - 1) {
+      const nextIndex = currentTaskIndex + 1
+      setCurrentTaskIndex(nextIndex)
+      const nextMins = tasks[nextIndex]?.estimatedMins || 25
+      setTotalSeconds(nextMins * 60)
+      setIsRunning(true)
+      setIsPaused(false)
+    } else {
+      setIsRunning(false)
+      setTotalSeconds(0)
+      setAllDone(true)
+    }
+  }, [currentTaskIndex, tasks])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -102,7 +114,9 @@ const FocusMode = () => {
         </button>
 
         <div className="px-4 py-1.5 bg-white border border-gray-200 rounded-full" role="status">
-          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Session {currentSession} of {totalSessions}</span>
+          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+            {tasks.length > 0 ? `Task ${currentTaskIndex + 1} of ${tasks.length}` : 'No tasks'}
+          </span>
         </div>
 
         <div className="flex items-center gap-4">
@@ -127,16 +141,32 @@ const FocusMode = () => {
         <div className="text-center mb-10 animate-fade-in">
           {loading ? (
             <p className="text-sm text-gray-400">Loading tasks...</p>
+          ) : allDone ? (
+            <>
+              <p className="text-sm text-emerald-500 font-medium mb-2">All tasks completed!</p>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight max-w-lg">
+                Great work today
+              </h1>
+              <p className="text-sm text-gray-500 mt-2">You've finished all {tasks.length} scheduled tasks.</p>
+            </>
           ) : currentTask ? (
             <>
-              <p className="text-sm text-gray-400 mb-2">
+              <p className="text-sm text-gray-400 mb-1">
                 Task {currentTaskIndex + 1} of {tasks.length}
               </p>
+              {currentTask.startTime && (
+                <p className="text-xs font-medium text-indigo-500 mb-3">
+                  {currentTask.startTime}{currentTask.endTime ? ` - ${currentTask.endTime}` : ''}
+                  {currentTask.estimatedMins && (
+                    <span className="text-gray-400 ml-2">({currentTask.estimatedMins} min)</span>
+                  )}
+                </p>
+              )}
               <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight max-w-lg">
                 {currentTask.title}
               </h1>
               {currentTask.description && (
-                <p className="text-sm text-gray-500 mt-2">{currentTask.description}</p>
+                <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto">{currentTask.description}</p>
               )}
             </>
           ) : (
@@ -147,7 +177,7 @@ const FocusMode = () => {
               </h1>
               <p className="text-sm text-gray-500 mt-2">Use the Chat Scheduler to plan your tomorrow's tasks</p>
             </>
-          )}
+           )}
         </div>
 
         {/* Timer Circle */}
@@ -208,7 +238,7 @@ const FocusMode = () => {
           <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span className="text-xs font-semibold text-gray-500">25 Streak Points if completed</span>
+          <span className="text-xs font-semibold text-gray-500">{currentMins} Streak Points if completed</span>
         </div>
 
         {/* Action Buttons */}
@@ -236,13 +266,14 @@ const FocusMode = () => {
           </button>
           <button
             onClick={completeTask}
-            aria-label="Complete current task and end session"
-            className="flex items-center gap-2.5 px-7 py-3.5 bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-2xl text-sm font-semibold shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300"
+            disabled={allDone || !currentTask}
+            aria-label={currentTaskIndex < tasks.length - 1 ? 'Complete task and move to next' : 'Complete final task'}
+            className="flex items-center gap-2.5 px-7 py-3.5 bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-2xl text-sm font-semibold shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Complete Task
+            {currentTaskIndex < tasks.length - 1 ? 'Next Task' : 'Complete Task'}
           </button>
         </div>
 

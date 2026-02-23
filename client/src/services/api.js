@@ -446,8 +446,14 @@ export const planningApi = {
       body: JSON.stringify({ conversationHistory }),
     });
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to finalize schedule');
+      let errorMessage = `Server error (${response.status})`;
+      try {
+        const error = await response.json();
+        errorMessage = error.error || errorMessage;
+      } catch {
+        // Response wasn't JSON (e.g. proxy error, HTML error page)
+      }
+      throw new Error(errorMessage);
     }
     return response.json();
   },
